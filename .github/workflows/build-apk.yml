@@ -1,4 +1,4 @@
-name: Build APK
+name: Build PCB Offline APK
 
 on:
   workflow_dispatch:
@@ -11,20 +11,20 @@ permissions:
 
 jobs:
   build:
-    name: Build PCB Offline APK
+    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Install Android SDK
@@ -33,59 +33,31 @@ jobs:
           sdkmanager "platforms;android-35"
           sdkmanager "build-tools;35.0.0"
 
-      - name: Extract Android project
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Check Android project
         run: |
-          rm -rf android_project
-          mkdir -p android_project
-
-          unzip -q PCB_Android_GitHub_Build_FIXED.zip -d android_project
-
-          echo "=== Isi hasil extract ==="
-          find android_project -maxdepth 4 -type f | head -100
-
-      - name: Find Android project
-        id: find_project
-        run: |
-          PROJECT_DIR=$(find "$GITHUB_WORKSPACE/android_project" \
-            \( -name "settings.gradle" -o -name "settings.gradle.kts" \) \
-            -print -quit | xargs dirname)
-
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: settings.gradle tidak ditemukan!"
-            exit 1
-          fi
-
-          echo "Project ditemukan di:"
-          echo "$PROJECT_DIR"
-
-          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+          echo "Isi repository:"
+          ls -la
+          echo ""
+          echo "Isi project:"
+          ls -la PCB_Android_Offline
+          echo ""
+          echo "Isi app:"
+          ls -la PCB_Android_Offline/app
 
       - name: Build APK
+        working-directory: PCB_Android_Offline
         run: |
-          cd "${{ steps.find_project.outputs.project_dir }}"
-
-          echo "=== Struktur project ==="
-          ls -la
-
-          if [ -f "./gradlew" ]; then
-            chmod +x ./gradlew
-            ./gradlew assembleDebug --no-daemon --stacktrace
-          else
-            gradle assembleDebug --no-daemon --stacktrace
-          fi
-
-      - name: Find APK
-        run: |
-          echo "=== Mencari APK ==="
-          find "${{ steps.find_project.outputs.project_dir }}" \
-            -type f \
-            -name "*.apk" \
-            -print
+          gradle :app:assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PCB-Offline-APK
-          path: |
-            ${{ steps.find_project.outputs.project_dir }}/app/build/outputs/apk/debug/*.apk
+          name: PCB-Offline-APK-FIXED-UI
+          path: PCB_Android_Offline/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 30
