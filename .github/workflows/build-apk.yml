@@ -8,10 +8,10 @@ on:
 
 jobs:
   build:
+    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -33,91 +33,103 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Extract Android project
+        shell: bash
         run: |
+          set -e
+
           echo "======================================"
           echo "Mencari ZIP project Android..."
           echo "======================================"
 
-          ZIP="PCB_Android_GitHub_Build_FIXED_UI.zip"
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name 'PCB_Android_GitHub_Build_FIXED_UI.zip' | head -n 1)
 
-          if [ ! -f "$ZIP" ]; then
-            echo "ERROR: File $ZIP tidak ditemukan!"
-            echo "Isi repository:"
-            ls -la
+          if [ -z "$ZIP_FILE" ]; then
+            ZIP_FILE=$(find . -maxdepth 1 -type f -name 'PCB_Android_GitHub_Build_FIXED.zip' | head -n 1)
+          fi
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: ZIP project tidak ditemukan!"
             exit 1
           fi
 
-          echo "ZIP ditemukan: $ZIP"
+          echo "ZIP yang digunakan:"
+          echo "$ZIP_FILE"
 
           rm -rf extracted
           mkdir -p extracted
 
-          echo "Mengekstrak project..."
-          unzip -o "$ZIP" -d extracted
+          unzip -q "$ZIP_FILE" -d extracted
 
-          echo "======================================"
+          echo ""
           echo "Isi hasil ekstraksi:"
-          echo "======================================"
-
           find extracted -maxdepth 4 -type f | head -100
 
-      - name: Find Android project
-        run: |
-          echo "======================================"
-          echo "Mencari settings.gradle..."
-          echo "======================================"
+          echo ""
+          echo "Mencari gradlew..."
 
-          SETTINGS=$(find "$GITHUB_WORKSPACE/extracted" \
-            -name "settings.gradle" \
-            -o -name "settings.gradle.kts" \
-            | head -1)
+          GRADLEW=$(find extracted -type f -name "gradlew" | head -n 1)
 
-          if [ -z "$SETTINGS" ]; then
-            echo "ERROR: settings.gradle tidak ditemukan!"
-            echo "Struktur folder:"
+          if [ -z "$GRADLEW" ]; then
+            echo "ERROR: gradlew tidak ditemukan di dalam ZIP!"
+            echo ""
+            echo "Struktur ZIP:"
             find extracted -maxdepth 5 -type f
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$SETTINGS")
+          PROJECT_DIR=$(dirname "$GRADLEW")
 
-          echo "Project Android ditemukan:"
+          echo ""
+          echo "gradlew ditemukan:"
+          echo "$GRADLEW"
+
+          echo ""
+          echo "PROJECT_DIR:"
           echo "$PROJECT_DIR"
 
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-          echo "======================================"
-          echo "Isi project:"
-          echo "======================================"
-
-          ls -la "$PROJECT_DIR"
-
-      - name: Make Gradle executable
-        run: |
-          chmod +x "$PROJECT_DIR/gradlew"
+          echo "$PROJECT_DIR" > project_dir.txt
 
       - name: Build APK
+        shell: bash
         run: |
-          cd "$PROJECT_DIR"
+          set -e
+
+          PROJECT_DIR=$(cat project_dir.txt)
 
           echo "======================================"
-          echo "BUILD APK"
+          echo "Project:"
+          echo "$PROJECT_DIR"
           echo "======================================"
+
+          cd "$PROJECT_DIR"
+
+          chmod +x ./gradlew
 
           ./gradlew assembleDebug --stacktrace
 
       - name: Find APK
+        shell: bash
         run: |
-          echo "======================================"
-          echo "Mencari APK hasil build..."
-          echo "======================================"
+          set -e
 
-          find "$PROJECT_DIR" -type f -name "*.apk"
+          echo "Mencari APK..."
+
+          APK=$(find extracted -type f -name "*.apk" | head -n 1)
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK tidak ditemukan!"
+            find extracted -type f | tail -100
+            exit 1
+          fi
+
+          echo "APK ditemukan:"
+          echo "$APK"
+
+          mkdir -p apk-output
+          cp "$APK" apk-output/PCB-Offline.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PCB-Offline-APK
-          path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          path: apk-output/PCB-Offline.apk
