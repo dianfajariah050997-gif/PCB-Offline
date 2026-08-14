@@ -38,7 +38,7 @@ jobs:
           rm -rf android_project
           mkdir -p android_project
 
-          unzip -q PCB_Android_GitHub_Build.zip -d android_project
+          unzip -q PCB_Android_GitHub_Build_FIXED.zip -d android_project
 
           echo "=== Isi hasil extract ==="
           find android_project -maxdepth 4 -type f | head -100
@@ -46,7 +46,9 @@ jobs:
       - name: Find Android project
         id: find_project
         run: |
-          PROJECT_DIR=$(find "$GITHUB_WORKSPACE/android_project" -name "settings.gradle" -o -name "settings.gradle.kts" | head -1 | xargs dirname)
+          PROJECT_DIR=$(find "$GITHUB_WORKSPACE/android_project" \
+            \( -name "settings.gradle" -o -name "settings.gradle.kts" \) \
+            -print -quit | xargs dirname)
 
           if [ -z "$PROJECT_DIR" ]; then
             echo "ERROR: settings.gradle tidak ditemukan!"
