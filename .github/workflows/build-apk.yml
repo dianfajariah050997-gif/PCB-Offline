@@ -33,25 +33,57 @@ jobs:
           sdkmanager "platforms;android-35"
           sdkmanager "build-tools;35.0.0"
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10.2'
+      - name: Extract Android project
+        run: |
+          rm -rf android_project
+          mkdir -p android_project
+
+          unzip -q PCB_Android_GitHub_Build.zip -d android_project
+
+          echo "=== Isi hasil extract ==="
+          find android_project -maxdepth 4 -type f | head -100
+
+      - name: Find Android project
+        id: find_project
+        run: |
+          PROJECT_DIR=$(find "$GITHUB_WORKSPACE/android_project" -name "settings.gradle" -o -name "settings.gradle.kts" | head -1 | xargs dirname)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: settings.gradle tidak ditemukan!"
+            exit 1
+          fi
+
+          echo "Project ditemukan di:"
+          echo "$PROJECT_DIR"
+
+          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Build APK
-        working-directory: PCB_Android_Offline
         run: |
-          gradle :app:assembleDebug \
-            --no-daemon \
-            --stacktrace
+          cd "${{ steps.find_project.outputs.project_dir }}"
 
-      - name: Check APK
+          echo "=== Struktur project ==="
+          ls -la
+
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleDebug --no-daemon --stacktrace
+          else
+            gradle assembleDebug --no-daemon --stacktrace
+          fi
+
+      - name: Find APK
         run: |
-          ls -lh PCB_Android_Offline/app/build/outputs/apk/debug/
-          
+          echo "=== Mencari APK ==="
+          find "${{ steps.find_project.outputs.project_dir }}" \
+            -type f \
+            -name "*.apk" \
+            -print
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PCB-Offline-APK
-          path: PCB_Android_Offline/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            ${{ steps.find_project.outputs.project_dir }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
