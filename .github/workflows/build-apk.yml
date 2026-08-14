@@ -31,6 +31,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
 
       - name: Extract Android project
         shell: bash
@@ -41,10 +43,12 @@ jobs:
           echo "Mencari ZIP project Android..."
           echo "======================================"
 
-          ZIP_FILE=$(find . -maxdepth 1 -type f -name 'PCB_Android_GitHub_Build_FIXED_UI.zip' | head -n 1)
+          ZIP_FILE=$(find . -maxdepth 1 -type f \
+            -name 'PCB_Android_GitHub_Build_FIXED_UI.zip' | head -n 1)
 
           if [ -z "$ZIP_FILE" ]; then
-            ZIP_FILE=$(find . -maxdepth 1 -type f -name 'PCB_Android_GitHub_Build_FIXED.zip' | head -n 1)
+            ZIP_FILE=$(find . -maxdepth 1 -type f \
+              -name 'PCB_Android_GitHub_Build_FIXED.zip' | head -n 1)
           fi
 
           if [ -z "$ZIP_FILE" ]; then
@@ -62,32 +66,34 @@ jobs:
 
           echo ""
           echo "Isi hasil ekstraksi:"
-          find extracted -maxdepth 4 -type f | head -100
+          find extracted -maxdepth 5 -type f
 
-          echo ""
-          echo "Mencari gradlew..."
+          PROJECT_DIR="extracted/PCB_Android_Offline"
 
-          GRADLEW=$(find extracted -type f -name "gradlew" | head -n 1)
-
-          if [ -z "$GRADLEW" ]; then
-            echo "ERROR: gradlew tidak ditemukan di dalam ZIP!"
-            echo ""
-            echo "Struktur ZIP:"
-            find extracted -maxdepth 5 -type f
+          if [ ! -f "$PROJECT_DIR/settings.gradle" ]; then
+            echo "ERROR: settings.gradle tidak ditemukan!"
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$GRADLEW")
+          if [ ! -f "$PROJECT_DIR/build.gradle" ]; then
+            echo "ERROR: build.gradle tidak ditemukan!"
+            exit 1
+          fi
+
+          if [ ! -d "$PROJECT_DIR/app" ]; then
+            echo "ERROR: folder app tidak ditemukan!"
+            exit 1
+          fi
 
           echo ""
-          echo "gradlew ditemukan:"
-          echo "$GRADLEW"
-
-          echo ""
-          echo "PROJECT_DIR:"
+          echo "Project ditemukan:"
           echo "$PROJECT_DIR"
 
           echo "$PROJECT_DIR" > project_dir.txt
+
+      - name: Check Gradle
+        run: |
+          gradle --version
 
       - name: Build APK
         shell: bash
@@ -97,28 +103,32 @@ jobs:
           PROJECT_DIR=$(cat project_dir.txt)
 
           echo "======================================"
-          echo "Project:"
-          echo "$PROJECT_DIR"
+          echo "BUILD APK"
+          echo "Project: $PROJECT_DIR"
           echo "======================================"
 
           cd "$PROJECT_DIR"
 
-          chmod +x ./gradlew
-
-          ./gradlew assembleDebug --stacktrace
+          gradle assembleDebug --stacktrace
 
       - name: Find APK
         shell: bash
         run: |
           set -e
 
-          echo "Mencari APK..."
+          echo "======================================"
+          echo "Mencari APK hasil build..."
+          echo "======================================"
 
           APK=$(find extracted -type f -name "*.apk" | head -n 1)
 
           if [ -z "$APK" ]; then
             echo "ERROR: APK tidak ditemukan!"
-            find extracted -type f | tail -100
+
+            echo ""
+            echo "Isi folder project:"
+            find extracted -type f
+
             exit 1
           fi
 
