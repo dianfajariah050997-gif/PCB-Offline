@@ -44,7 +44,7 @@ jobs:
           echo "======================================"
 
           ZIP_FILE=$(find . -maxdepth 1 -type f \
-            -name 'PCB_Android_GitHub_Build_FIXED_UI_v2.zip' | head -n 1)
+            -name 'PCB_Android_GitHub_Build_FIXED_UI_v3.zip' | head -n 1)
 
           if [ -z "$ZIP_FILE" ]; then
             ZIP_FILE=$(find . -maxdepth 1 -type f \
