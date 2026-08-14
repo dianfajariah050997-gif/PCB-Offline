@@ -38,16 +38,16 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Check Android project
+      - name: Extract Android project
         run: |
-          echo "Isi repository:"
+          echo "Mencari ZIP project..."
           ls -la
-          echo ""
-          echo "Isi project:"
+
+          unzip -q PCB_Android_GitHub_Build_FIXED_UI.zip
+
+          echo "ZIP berhasil diekstrak."
+          echo "Isi folder project:"
           ls -la PCB_Android_Offline
-          echo ""
-          echo "Isi app:"
-          ls -la PCB_Android_Offline/app
 
       - name: Build APK
         working-directory: PCB_Android_Offline
