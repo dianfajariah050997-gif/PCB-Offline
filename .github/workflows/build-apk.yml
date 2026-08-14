@@ -1,0 +1,21 @@
+name: Build PCB Offline APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find and extract Android project
+        run: |
+          ZIP_FILE=$(find . -max
