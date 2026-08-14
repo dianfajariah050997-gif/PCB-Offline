@@ -32,7 +32,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.7'
+          gradle-version: '8.9'
 
       - name: Extract Android project
         shell: bash
@@ -124,11 +124,7 @@ jobs:
 
           if [ -z "$APK" ]; then
             echo "ERROR: APK tidak ditemukan!"
-
-            echo ""
-            echo "Isi folder project:"
             find extracted -type f
-
             exit 1
           fi
 
